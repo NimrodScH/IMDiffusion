@@ -104,7 +104,7 @@ py -m pip install --pre torch torchvision torchaudio --index-url https://downloa
 
 # 4. Install remaining dependencies
 py -m pip install numpy pyyaml pandas gdown
-> Verification: When running step 3, ensure the download size is > 2.0 GB. If it is small (~110MB), you are getting the CPU version.
+Verification: When running step 3, ensure the download size is > 2.0 GB. If it is small (~110MB), you are getting the CPU version.
 
 2. Training on Custom Data
 To use your own data instead of the academic datasets (SMD/PSM), follow this workflow.
@@ -119,9 +119,9 @@ test.csv (Test data, same columns)
 test_label.csv (Binary labels: 0=Normal, 1=Anomaly)
 
 Step B: Convert to .pkl Format
-Create a file named convert_data.py in the root directory and paste this code. This converts your CSVs into the specific NumPy format the model requires.
+Create a file named convert_data.py in the root directory and paste the code below. This converts your CSVs into the specific NumPy format the model requires.
 
-<details> <summary><b>Click to view convert_data.py</b></summary>
+File: convert_data.py
 
 Python
 
@@ -166,8 +166,6 @@ def create_dataset():
 
 if __name__ == "__main__":
     create_dataset()
-</details>
-
 Run the converter:
 
 PowerShell
