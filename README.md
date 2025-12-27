@@ -79,3 +79,129 @@ journal={arXiv preprint arXiv:2307.00754},
 year={2023}
 }
 ```
+🚀 Advanced Setup Guide (Python 3.14 & Custom Data)
+This guide documents how to run IMDiffusion on the latest Python 3.14 using nightly PyTorch builds with CUDA 12.6 support, and how to train it on your own datasets.
+
+1. Environment Setup (The Bleeding Edge Way)
+Standard installations will fail on Python 3.14. You must use the nightly repository to get a GPU-enabled build.
+
+A. Clean Installation
+Open your terminal in the project folder:
+
+PowerShell
+
+# 1. Create and activate a clean virtual environment
+py -m venv venv
+.\venv\Scripts\activate
+
+# 2. IMPORTANT: Remove any cached CPU versions if you previously tried installing
+py -m pip uninstall torch torchvision torchaudio -y
+py -m pip cache purge
+
+# 3. Install PyTorch Nightly with CUDA 12.6 Support
+# This specific command targets the experimental build compatible with Python 3.14
+py -m pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu126
+
+# 4. Install remaining dependencies
+py -m pip install numpy pyyaml pandas gdown
+> Verification: When running step 3, ensure the download size is > 2.0 GB. If it is small (~110MB), you are getting the CPU version.
+
+2. Training on Custom Data
+To use your own data instead of the academic datasets (SMD/PSM), follow this workflow.
+
+Step A: Prepare Your Data
+You need three CSV files:
+
+train.csv (Training data, columns = features)
+
+test.csv (Test data, same columns)
+
+test_label.csv (Binary labels: 0=Normal, 1=Anomaly)
+
+Step B: Convert to .pkl Format
+Create a file named convert_data.py in the root directory and paste this code. This converts your CSVs into the specific NumPy format the model requires.
+
+<details> <summary><b>Click to view convert_data.py</b></summary>
+
+Python
+
+import numpy as np
+import pandas as pd
+import pickle
+import os
+
+# --- CONFIGURATION ---
+DATASET_NAME = "MyData"   # Name used in command line later
+TRAIN_CSV = "train.csv"
+TEST_CSV = "test.csv"
+LABEL_CSV = "test_label.csv"
+# ---------------------
+
+def create_dataset():
+    output_dir = os.path.join("data", "Machine")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    print(f"Processing {DATASET_NAME}...")
+
+    try:
+        # Load CSVs (Assumes no header row. If you have headers, add header=0)
+        train_data = pd.read_csv(TRAIN_CSV, header=None).values.astype(np.float32)
+        test_data = pd.read_csv(TEST_CSV, header=None).values.astype(np.float32)
+        test_label = pd.read_csv(LABEL_CSV, header=None).values.flatten().astype(np.float32)
+    except FileNotFoundError:
+        print("❌ Error: CSV files not found. Please ensure train.csv, test.csv, and test_label.csv exist.")
+        return
+
+    print(f"Feature Dimension: {train_data.shape[1]}")
+    
+    # Save as .pkl
+    with open(os.path.join(output_dir, f"{DATASET_NAME}_train.pkl"), "wb") as f:
+        pickle.dump(train_data, f)
+    with open(os.path.join(output_dir, f"{DATASET_NAME}_test.pkl"), "wb") as f:
+        pickle.dump(test_data, f)
+    with open(os.path.join(output_dir, f"{DATASET_NAME}_test_label.pkl"), "wb") as f:
+        pickle.dump(test_label, f)
+    
+    print("✅ Conversion complete! Files saved to data/Machine/")
+
+if __name__ == "__main__":
+    create_dataset()
+</details>
+
+Run the converter:
+
+PowerShell
+
+py convert_data.py
+Step C: Register Dataset in Code
+Open exe_machine.py and modify the dataset selection logic (approx. line 118). You must tell the model how many features (columns) your data has.
+
+Python
+
+    if args.dataset == "SMD":
+        feature_dim = 38
+    elif args.dataset == "MyData":   # <--- ADD THIS BLOCK
+        feature_dim = 5              # <--- Set this to YOUR number of columns
+    elif args.dataset == "SMAP" or args.dataset == "PSM":
+        feature_dim = 25
+3. Running the Model
+Train
+PowerShell
+
+py exe_machine.py --dataset MyData --device cuda:0
+Evaluate
+PowerShell
+
+py evaluate_machine_window_middle.py --dataset MyData --device cuda:0
+4. Common Fixes
+If you encounter errors during execution, apply these code fixes:
+
+FileExistsError in exe_machine.py:
+
+Find: os.makedirs(foldername)
+
+Replace with: os.makedirs(foldername, exist_ok=True)
+
+Indentation Errors:
+
+Ensure your elif args.dataset == "MyData": block is aligned exactly with the if statement above it.
